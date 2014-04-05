@@ -26,7 +26,7 @@ type Node struct {
 }
 
 func gitCmd(args string) {
-    cmd := exec.Command("git", "commit", "-am \"test\"")
+    cmd := exec.Command("git", "commit", fmt.Sprintf("-am \"%s\"", args))
 
     var out bytes.Buffer
     cmd.Stdout = &out
