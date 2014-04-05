@@ -1,6 +1,8 @@
 # g-wiki
 
-A KISS wiki built on golang with git as the storage back-end.
+A _KISS_ wiki built on golang with git as the storage back-end. Content
+is formatted in [markdown
+syntax](http://daringfireball.net/projects/markdown/syntax).
 
 ## Install
 
@@ -9,7 +11,7 @@ where you checked out the g-wiki project:
 
     export GOPATH=$GOPATH:/some/path/g-wiki/
 
-Create a binary in ./bin by installing g-wiki:
+Create a binary in ./bin by compiling g-wiki:
 
     go install mehl.no/wiki
 
