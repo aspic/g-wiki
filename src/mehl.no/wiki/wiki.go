@@ -8,6 +8,8 @@ import (
     "flag"
     "io/ioutil"
     "github.com/russross/blackfriday"
+    "os/exec"
+    "bytes"
 )
 
 const (
@@ -21,6 +23,18 @@ type Node struct {
     Content string
     Template string
     Markdown string
+}
+
+func gitCmd(args string) {
+    cmd := exec.Command("git", "commit", "-am \"test\"")
+
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    err := cmd.Run()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("in all caps: %q\n", out.String())
 }
 
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +56,8 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
         if err != nil {
             log.Print("Cant write to file", filePath)
         } else {
+            // Written file, commit
+            gitCmd("test test")
             node.Markdown = string(blackfriday.MarkdownBasic(bytes))
         }
     } else {

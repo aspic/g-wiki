@@ -11,7 +11,7 @@ where you checked out the g-wiki project:
 
     export GOPATH=$GOPATH:/some/path/g-wiki/
 
-Create get dependencies and compile the binary by:
+Download dependencies and compile the binary by:
 
     go get all
     go install mehl.no/wiki
