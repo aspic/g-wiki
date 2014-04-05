@@ -5,4 +5,4 @@ files/*
 # Build dependencies
 src/github.com
 # Binary
-wiki
+/wiki

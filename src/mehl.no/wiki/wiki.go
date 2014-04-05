@@ -1,10 +1,10 @@
 package main
 
 import (
-	"html/template"
-	"net/http"
-	"log"
-	"fmt"
+    "html/template"
+    "net/http"
+    "log"
+    "fmt"
     "flag"
     "io/ioutil"
     "github.com/russross/blackfriday"
@@ -83,15 +83,15 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 }
 
 func main() {
-	// Handlers
-	http.HandleFunc("/", wikiHandler)
+    // Handlers
+    http.HandleFunc("/", wikiHandler)
 
-	// Static resources
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+    // Static resources
+    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
-    var host = flag.String("h", default_host, "Hostname to run server on.")
-    var port = flag.Int("p", default_port, "Port to serve from.")
-	flag.Parse()
+    var host = flag.String("h", default_host, "Hostname")
+    var port = flag.Int("p", default_port, "Port")
+    flag.Parse()
 
     err := http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), nil)
     if err != nil {
