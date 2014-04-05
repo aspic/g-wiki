@@ -20,21 +20,33 @@ const (
 
 type Node struct {
     Path string
+    File string
     Content string
     Template string
     Markdown string
 }
-
-func gitCmd(args string) {
-    cmd := exec.Command("git", "commit", fmt.Sprintf("-am \"%s\"", args))
-
-    var out bytes.Buffer
-    cmd.Stdout = &out
-    err := cmd.Run()
+// Add file
+func (node Node) GitAdd() Node {
+    err := gitCmd(exec.Command("git", "add", node.File))
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Printf("in all caps: %q\n", out.String())
+    return node
+}
+// Commit message
+func (node Node) GitCommit(msg string) Node {
+    err := gitCmd(exec.Command("git", "commit", "-m", msg))
+    if err != nil {
+        log.Fatal(err)
+    }
+    return node
+}
+
+func gitCmd(cmd *exec.Cmd) error {
+    cmd.Dir = fmt.Sprintf("%s/", dir)
+    var out bytes.Buffer
+    cmd.Stdout = &out
+    return cmd.Run()
 }
 
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,20 +56,20 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     }
     content := r.FormValue("content")
     edit := r.FormValue("edit")
+    changelog := r.FormValue("msg")
 
     filePath := fmt.Sprintf("%s%s.md", dir, r.URL.Path)
-
-    node := &Node{Path: r.URL.Path}
+    node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
 
     // Write file
-    if content != "" {
+    if content != "" && changelog != "" {
         bytes := []byte(content)
         err := ioutil.WriteFile(filePath, bytes, 0644)
         if err != nil {
             log.Print("Cant write to file", filePath)
         } else {
             // Written file, commit
-            gitCmd("test test")
+            node.GitAdd().GitCommit(changelog)
             node.Markdown = string(blackfriday.MarkdownBasic(bytes))
         }
     } else {
