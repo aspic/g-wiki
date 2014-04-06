@@ -107,16 +107,6 @@ func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
     return &out
 }
 
-func (node *Node) DirHir(path string) {
-    dirs := strings.Split(path, "/")
-    curr := ""
-    node.Dirs = make([]string, 0)
-    for _,line := range dirs {
-        curr += line
-        node.Dirs = append(node.Dirs, curr)
-    }
-}
-
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     if r.URL.Path == "/favicon.ico" {
