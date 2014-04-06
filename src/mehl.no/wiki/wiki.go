@@ -21,7 +21,7 @@ const (
     default_host = "localhost"
     default_port = 8080
     dir = "files"
-    log_limit = 10
+    log_limit = "5"
 )
 
 type Node struct {
@@ -34,13 +34,19 @@ type Node struct {
     Revision string
     Dirs []string
     Active string
+    Bytes []byte
 }
 
 type Log struct {
     Hash string
     Message string
     Time string
+    Link bool
 }
+func (node *Node) isHead() bool {
+    return len(node.Log) > 0 && node.Revision == node.Log[0].Hash
+}
+
 // Add node
 func (node *Node) GitAdd() *Node {
     gitCmd(exec.Command("git", "add", node.File))
@@ -54,31 +60,38 @@ func (node *Node) GitCommit(msg string) *Node {
 // Fetch node revision
 func (node *Node) GitShow() *Node {
     buf := gitCmd(exec.Command("git", "show", node.Revision+":"+node.File))
-    node.Markdown = string(blackfriday.MarkdownBasic(buf.Bytes()))
-    if node.Markdown == "" {
-        node.Markdown = " "
-    }
+    node.Bytes = buf.Bytes()
     return node
 }
 // Fetch node log
 func (node *Node) GitLog() *Node {
-    buf := gitCmd(exec.Command("git", "log", "--pretty=format:{\"Hash\": \"%h\", \"Message\":\"%s\", \"Time\":\"%ad\"}", "--date=relative", node.File))
+    buf := gitCmd(exec.Command("git", "log", "--pretty=format:{\"Hash\": \"%h\", \"Message\":\"%s\", \"Time\":\"%ad\"}", "--date=relative", "-n", log_limit, node.File))
     var err error
     b := bufio.NewReader(buf)
     var bytes []byte
     node.Log = make([]*Log, 0)
     for (err == nil) {
-        if len(node.Log) >= log_limit {
-            break
-        }
         bytes, err = b.ReadSlice('\n')
         logLine := &Log{}
         err = json.Unmarshal(bytes, logLine)
         if err != nil {
             break
         }
+        if logLine.Hash != node.Revision {
+            logLine.Link = true
+        }
         node.Log = append(node.Log, logLine)
     }
+    if node.Revision == "" && len(node.Log) > 0 {
+        node.Revision = node.Log[0].Hash
+        node.Log[0].Link = false
+    }
+    return node
+}
+// Soft reset to specific revision
+func (node *Node) GitRevert() *Node {
+    log.Printf("Reverts %s to revision %s", node, node.Revision)
+    gitCmd(exec.Command("git", "checkout", node.Revision, "--", node.File))
     return node
 }
 // Run git command, will currently die on all errors
@@ -88,7 +101,8 @@ func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
     cmd.Stdout = &out
     runError := cmd.Run()
     if runError != nil {
-        log.Fatal(fmt.Sprintf("Command failed with:\n\"%s\n\"", out.String()))
+        log.Print(fmt.Sprintf("Error: command failed with:\n\"%s\n\"", out.String()))
+        return bytes.NewBuffer([]byte{})
     }
     return &out
 }
@@ -112,7 +126,8 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     content := r.FormValue("content")
     edit := r.FormValue("edit")
     changelog := r.FormValue("msg")
-    revision := r.FormValue("show")
+    reset := r.FormValue("revert")
+    revision := r.FormValue("revision")
 
     filePath := fmt.Sprintf("%s%s.md", dir, r.URL.Path)
     node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
@@ -124,33 +139,34 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
         node.Dirs = strings.Split(path.Dir(entry), "/")
     }
 
-    // Write file
+    // We have content, update
     if content != "" && changelog != "" {
         bytes := []byte(content)
         err := writeFile(bytes, filePath)
         if err != nil {
             log.Printf("Cant write to file %s, error: ", filePath, err)
         } else {
-            // Written file, commit
+            // Wrote file, commit
             node.GitAdd().GitCommit(changelog).GitLog()
             node.Markdown = string(blackfriday.MarkdownBasic(bytes))
         }
-    } else if(revision != "") {
+    } else if(reset != "") {
+        // Reset to revision
+        node.Revision = reset
+        node.GitRevert().GitCommit("Reverted to: " + node.Revision)
+        node.Revision = ""
+        node.GitShow().GitLog()
+        node.Markdown = string(blackfriday.MarkdownBasic(node.Bytes))
+    } else {
+        // Show specific revision
         node.Revision = revision
         node.GitShow().GitLog()
-    } else {
-        bytes, err := ioutil.ReadFile(filePath)
-        if err != nil {
-            log.Printf("No file with path: %s", filePath)
+        if edit == "true" || len(node.Bytes) == 0 {
+            node.Content = string(node.Bytes)
+            node.Template = "templates/edit.tpl"
         } else {
-            if edit == "true" {
-                node.Content = string(bytes)
-            } else {
-                node.Markdown = string(blackfriday.MarkdownBasic(bytes))
-            }
-            node.GitLog()
+            node.Markdown = string(blackfriday.MarkdownBasic(node.Bytes))
         }
-        node.Template = "templates/edit.tpl"
     }
     renderTemplate(w, node)
 }
@@ -171,8 +187,10 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
     // Build template
     if node.Markdown != "" {
         tpl := fmt.Sprintf("%s\n%s", "{{ template \"header\" . }}", node.Markdown)
-       if node.Revision == "" {
+        if node.isHead() {
             tpl += "{{ template \"actions\" .}}"
+        } else if node.Revision != "" {
+            tpl += "{{ template \"revision\" . }}"
         }
         // Footer
         tpl += "{{ template \"footer\" . }}"
@@ -185,7 +203,8 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
     }
 
     // Include the rest
-    t.ParseFiles("templates/header.tpl", "templates/footer.tpl", "templates/actions.tpl")
+    t.ParseFiles("templates/header.tpl", "templates/footer.tpl",
+    "templates/actions.tpl", "templates/revision.tpl")
 	err = t.Execute(w, node)
     if err != nil {
         log.Print("Could not execute template: ", err)
