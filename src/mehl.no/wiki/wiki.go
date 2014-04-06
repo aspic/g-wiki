@@ -74,7 +74,6 @@ func (node *Node) GitLog() *Node {
     node.Log = make([]*Log, 0)
     for (err == nil) {
         bytes, err = b.ReadSlice('\n')
-        bytes = sanitize(bytes)
         logLine := &Log{}
         err = json.Unmarshal(bytes, logLine)
         if err != nil {
@@ -110,12 +109,18 @@ func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
     }
     return &out
 }
+// Process node contents
+func (node *Node) ToMarkdown() {
+    node.Markdown = string(blackfriday.MarkdownCommon(node.Bytes))
+}
 
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     if r.URL.Path == "/favicon.ico" {
         return
     }
+    log.Printf("ip: %s, route: %s", r.RemoteAddr, r.URL.Path)
+
     // Params
     content := r.FormValue("content")
     edit := r.FormValue("edit")
@@ -135,14 +140,15 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     // We have content, update
     if content != "" && changelog != "" {
-        bytes := []byte(template.HTMLEscapeString(content))
+        bytes := []byte(content)
         err := writeFile(bytes, filePath)
         if err != nil {
             log.Printf("Cant write to file %s, error: ", filePath, err)
         } else {
             // Wrote file, commit
+            node.Bytes = bytes
             node.GitAdd().GitCommit(changelog).GitLog()
-            node.Markdown = string(blackfriday.MarkdownBasic(bytes))
+            node.ToMarkdown()
         }
     } else if(reset != "") {
         // Reset to revision
@@ -150,7 +156,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
         node.GitRevert().GitCommit("Reverted to: " + node.Revision)
         node.Revision = ""
         node.GitShow().GitLog()
-        node.Markdown = string(blackfriday.MarkdownBasic(node.Bytes))
+        node.ToMarkdown()
     } else {
         // Show specific revision
         node.Revision = revision
@@ -159,17 +165,10 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
             node.Content = string(node.Bytes)
             node.Template = "templates/edit.tpl"
         } else {
-            node.Markdown = string(blackfriday.MarkdownBasic(node.Bytes))
+            node.ToMarkdown()
         }
     }
     renderTemplate(w, node)
-}
-
-func sanitize(bytes []byte) []byte {
-    msg := string(bytes)
-    newString := strings.Replace(string(msg), ";", "\\;", -1)
-    log.Print(newString)
-    return []byte(newString)
 }
 
 func writeFile(bytes []byte, entry string) error {
@@ -187,12 +186,14 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 
     // Build template
     if node.Markdown != "" {
-        tpl := fmt.Sprintf("%s\n%s", "{{ template \"header\" . }}", node.Markdown)
+        tpl := "{{ template \"header\" . }}"
         if node.isHead() {
             tpl += "{{ template \"actions\" .}}"
         } else if node.Revision != "" {
             tpl += "{{ template \"revision\" . }}"
         }
+        // Add content
+        tpl += node.Markdown
         // Footer
         tpl += "{{ template \"footer\" . }}"
         t.Parse(tpl)
