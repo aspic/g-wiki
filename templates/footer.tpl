@@ -2,14 +2,18 @@
  </div>
 <div class="col-md-3">
  <p class="text-muted">Revisions:</p>
- <ol class="list-group" style="margin: 5px;">
+ <div class="list-group">
   {{range $log := .Log}}
-   <li class="list-group-item">
-    <a href="?show={{$log.Hash}}" class="btn btn-primary btn-xs">show</a>
+   {{if $log.Link}}
+    <a href="?revision={{$log.Hash}}" class="list-group-item">
+   {{else}}
+    <a href="?revision={{$log.Hash}}" class="list-group-item active">
+   {{end}}
     {{$log.Message}} ({{$log.Time}})
+   </a>
    </li>
   {{end}}
- </ol>
+ </div>
 </div>
 <!-- end row -->
 </div>
