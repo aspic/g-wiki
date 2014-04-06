@@ -61,6 +61,8 @@ func (node *Node) GitCommit(msg string) *Node {
 func (node *Node) GitShow() *Node {
     buf := gitCmd(exec.Command("git", "show", node.Revision+":"+node.File))
     node.Bytes = buf.Bytes()
+    log.Print(len(node.Bytes))
+    log.Print(node.Revision)
     return node
 }
 // Fetch node log
@@ -72,9 +74,11 @@ func (node *Node) GitLog() *Node {
     node.Log = make([]*Log, 0)
     for (err == nil) {
         bytes, err = b.ReadSlice('\n')
+        bytes = sanitize(bytes)
         logLine := &Log{}
         err = json.Unmarshal(bytes, logLine)
         if err != nil {
+            log.Print(err)
             break
         }
         if logLine.Hash != node.Revision {
@@ -131,7 +135,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     // We have content, update
     if content != "" && changelog != "" {
-        bytes := []byte(content)
+        bytes := []byte(template.HTMLEscapeString(content))
         err := writeFile(bytes, filePath)
         if err != nil {
             log.Printf("Cant write to file %s, error: ", filePath, err)
@@ -159,6 +163,13 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
         }
     }
     renderTemplate(w, node)
+}
+
+func sanitize(bytes []byte) []byte {
+    msg := string(bytes)
+    newString := strings.Replace(string(msg), ";", "\\;", -1)
+    log.Print(newString)
+    return []byte(newString)
 }
 
 func writeFile(bytes []byte, entry string) error {
