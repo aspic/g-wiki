@@ -9,9 +9,12 @@
 <body>
 <div class="container">
  <div class="row">
-  <div class="col-md-1">
-   <label>{{ .Path }}</label><br />
-   <a href="/">Home</a>
-  </div>
- <div class="col-md-8">
+  <div class="col-md-9">
+   <ol class="breadcrumb">
+    {{range $dir := .Dirs }}
+     <li><a href="../{{ $dir }}">{{$dir}}</a></li>
+    {{ end }}
+    <li class="active">{{ .Active }}</li>
+   </ol>
+   {{ if .Revision}}<p class="text-muted">Revision: {{.Revision}}</p>{{end}}
 {{end}}

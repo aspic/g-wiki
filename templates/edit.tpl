@@ -5,7 +5,9 @@
  </div>
  <div class="form-group">
   <input type="text" class="form-control" name="msg" placeholder="Changelog"/>
-  <input type="submit" class="btn btn-primary btn-sm" value="Save"/>
+  <button type="submit" class="btn btn-default btn-xs">
+   <span class="glyphicon glyphicon-floppy-disk"></span> Save
+  </button>
  </div>
 </form>
 {{ template "footer" . }}

@@ -1,7 +1,10 @@
 {{ define "actions" }}
-<form method="POST" action="?edit=true">
- <div class="form-group">
-  <input type="submit" class="btn btn-primary btn-sm" value="Edit" />
- </div>
-</form>
+ <form method="POST">
+  <div class="form-group">
+   <button type="submit" class="btn btn-default btn-xs">
+    <span class="glyphicon glyphicon-edit"></span> Edit
+   </button>
+   <input type="hidden" name="edit" value="true" />
+  </div>
+ </form>
 {{end}}
