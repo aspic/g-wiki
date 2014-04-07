@@ -8,6 +8,7 @@ import (
     "flag"
     "io/ioutil"
     "os"
+    "regexp"
     "path"
     "github.com/russross/blackfriday"
     "os/exec"
@@ -74,6 +75,7 @@ func (node *Node) GitLog() *Node {
     node.Log = make([]*Log, 0)
     for (err == nil) {
         bytes, err = b.ReadSlice('\n')
+        bytes = parseLog(bytes)
         logLine := &Log{}
         err = json.Unmarshal(bytes, logLine)
         if err != nil {
@@ -91,6 +93,19 @@ func (node *Node) GitLog() *Node {
     }
     return node
 }
+// Parse log lines. TODO: Clean.
+func parseLog(bytes []byte) []byte {
+    line := string(bytes)
+    re := regexp.MustCompile(`(.*\"Message\":\")(.*)(\", .*)`)
+    re2 := regexp.MustCompile(`\"`)
+    matches := re.FindStringSubmatch(line)
+    if len(matches) == 4 {
+        sub := re2.ReplaceAllString(matches[2], " ")
+        return []byte(re.ReplaceAllString(line, fmt.Sprintf(`$1 %s $3`, sub)))
+    }
+    return bytes
+}
+
 // Soft reset to specific revision
 func (node *Node) GitRevert() *Node {
     log.Printf("Reverts %s to revision %s", node, node.Revision)
