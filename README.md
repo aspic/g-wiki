@@ -2,7 +2,8 @@
 
 A _KISS_ wiki built on golang with git as the storage back-end. Content
 is formatted in [markdown
-syntax](http://daringfireball.net/projects/markdown/syntax).
+syntax](http://daringfireball.net/projects/markdown/syntax). The wiki is
+rendered with go templates and (bootstrap)[getbootstrap.com) css.
 
 ## Install
 
