@@ -18,10 +18,10 @@ import (
 )
 
 const (
-    default_host = "localhost"
-    default_port = 8080
-    dir = "files"
-    log_limit = "5"
+    DEFAULT_HOST = "localhost"
+    DEFAULT_PORT = 8080
+    DIRECTORY = "files"
+    LOG_LIMIT = "5"
 )
 
 type Node struct {
@@ -46,7 +46,6 @@ type Log struct {
 func (node *Node) isHead() bool {
     return len(node.Log) > 0 && node.Revision == node.Log[0].Hash
 }
-
 // Add node
 func (node *Node) GitAdd() *Node {
     gitCmd(exec.Command("git", "add", node.File))
@@ -61,13 +60,11 @@ func (node *Node) GitCommit(msg string) *Node {
 func (node *Node) GitShow() *Node {
     buf := gitCmd(exec.Command("git", "show", node.Revision+":"+node.File))
     node.Bytes = buf.Bytes()
-    log.Print(len(node.Bytes))
-    log.Print(node.Revision)
     return node
 }
 // Fetch node log
 func (node *Node) GitLog() *Node {
-    buf := gitCmd(exec.Command("git", "log", "--pretty=format:%h %ad %s", "--date=relative", "-n", log_limit, node.File))
+    buf := gitCmd(exec.Command("git", "log", "--pretty=format:%h %ad %s", "--date=relative", "-n", LOG_LIMIT, node.File))
     var err error
     b := bufio.NewReader(buf)
     var bytes []byte
@@ -91,7 +88,6 @@ func parseLog(bytes []byte) *Log {
     line := string(bytes)
     re := regexp.MustCompile(`(.{0,7}) (\d+ \w+ ago) (.*)`)
     matches := re.FindStringSubmatch(line)
-    log.Print(len(matches))
     if len(matches) == 4 {
         return &Log{Hash: matches[1], Time: matches[2], Message: matches[3]}
     }
@@ -106,7 +102,7 @@ func (node *Node) GitRevert() *Node {
 }
 // Run git command, will currently die on all errors
 func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
-    cmd.Dir = fmt.Sprintf("%s/", dir)
+    cmd.Dir = fmt.Sprintf("%s/", DIRECTORY)
     var out bytes.Buffer
     cmd.Stdout = &out
     runError := cmd.Run()
@@ -135,7 +131,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     reset := r.FormValue("revert")
     revision := r.FormValue("revision")
 
-    filePath := fmt.Sprintf("%s%s.md", dir, r.URL.Path)
+    filePath := fmt.Sprintf("%s%s.md", DIRECTORY, r.URL.Path)
     node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
 
     entry := r.URL.Path
@@ -227,8 +223,8 @@ func main() {
     // Static resources
     http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
-    var host = flag.String("h", default_host, "Hostname")
-    var port = flag.Int("p", default_port, "Port")
+    var host = flag.String("h", DEFAULT_HOST, "Hostname")
+    var port = flag.Int("p", DEFAULT_PORT, "Port")
     flag.Parse()
 
     err := http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), nil)
