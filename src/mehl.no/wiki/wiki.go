@@ -14,7 +14,6 @@ import (
     "os/exec"
     "bytes"
     "bufio"
-    "encoding/json"
     "strings"
 )
 
@@ -68,20 +67,14 @@ func (node *Node) GitShow() *Node {
 }
 // Fetch node log
 func (node *Node) GitLog() *Node {
-    buf := gitCmd(exec.Command("git", "log", "--pretty=format:{\"Hash\": \"%h\", \"Message\":\"%s\", \"Time\":\"%ad\"}", "--date=relative", "-n", log_limit, node.File))
+    buf := gitCmd(exec.Command("git", "log", "--pretty=format:%h %ad %s", "--date=relative", "-n", log_limit, node.File))
     var err error
     b := bufio.NewReader(buf)
     var bytes []byte
     node.Log = make([]*Log, 0)
     for (err == nil) {
         bytes, err = b.ReadSlice('\n')
-        bytes = parseLog(bytes)
-        logLine := &Log{}
-        err = json.Unmarshal(bytes, logLine)
-        if err != nil {
-            log.Print(err)
-            break
-        }
+        logLine := parseLog(bytes)
         if logLine.Hash != node.Revision {
             logLine.Link = true
         }
@@ -93,17 +86,16 @@ func (node *Node) GitLog() *Node {
     }
     return node
 }
-// Parse log lines. TODO: Clean.
-func parseLog(bytes []byte) []byte {
+
+func parseLog(bytes []byte) *Log {
     line := string(bytes)
-    re := regexp.MustCompile(`(.*\"Message\":\")(.*)(\", .*)`)
-    re2 := regexp.MustCompile(`\"`)
+    re := regexp.MustCompile(`(.{0,7}) (\d+ \w+ ago) (.*)`)
     matches := re.FindStringSubmatch(line)
+    log.Print(len(matches))
     if len(matches) == 4 {
-        sub := re2.ReplaceAllString(matches[2], " ")
-        return []byte(re.ReplaceAllString(line, fmt.Sprintf(`$1 %s $3`, sub)))
+        return &Log{Hash: matches[1], Time: matches[2], Message: matches[3]}
     }
-    return bytes
+    return nil
 }
 
 // Soft reset to specific revision
