@@ -52,8 +52,12 @@ func (node *Node) GitAdd() *Node {
     return node
 }
 // Commit node message
-func (node *Node) GitCommit(msg string) *Node {
-    gitCmd(exec.Command("git", "commit", "-m", msg))
+func (node *Node) GitCommit(msg string, author string) *Node {
+    if author != "" {
+        gitCmd(exec.Command("git", "commit", "-m", msg, fmt.Sprintf("--author='%s <system@g-wiki>'", author)))
+    } else {
+        gitCmd(exec.Command("git", "commit", "-m", msg))
+    }
     return node
 }
 // Fetch node revision
@@ -128,6 +132,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     content := r.FormValue("content")
     edit := r.FormValue("edit")
     changelog := r.FormValue("msg")
+    author := r.FormValue("author")
     reset := r.FormValue("revert")
     revision := r.FormValue("revision")
 
@@ -150,13 +155,13 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
         } else {
             // Wrote file, commit
             node.Bytes = bytes
-            node.GitAdd().GitCommit(changelog).GitLog()
+            node.GitAdd().GitCommit(changelog, author).GitLog()
             node.ToMarkdown()
         }
     } else if(reset != "") {
         // Reset to revision
         node.Revision = reset
-        node.GitRevert().GitCommit("Reverted to: " + node.Revision)
+        node.GitRevert().GitCommit("Reverted to: " + node.Revision, author)
         node.Revision = ""
         node.GitShow().GitLog()
         node.ToMarkdown()
