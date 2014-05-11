@@ -15,6 +15,7 @@ import (
     "bytes"
     "bufio"
     "strings"
+    "strconv"
 )
 
 const (
@@ -35,6 +36,8 @@ type Node struct {
     Dirs []string
     Active string
     Bytes []byte
+
+    Revisions bool // Show revisions
 }
 
 type Log struct {
@@ -121,6 +124,14 @@ func (node *Node) ToMarkdown() {
     node.Markdown = string(blackfriday.MarkdownCommon(node.Bytes))
 }
 
+func ParseBool(value string) bool {
+    boolValue, err := strconv.ParseBool(value)
+    if err != nil {
+        return false
+    }
+    return boolValue
+}
+
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     if r.URL.Path == "/favicon.ico" {
@@ -138,6 +149,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
 
     filePath := fmt.Sprintf("%s%s.md", DIRECTORY, r.URL.Path)
     node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
+    node.Revisions = ParseBool(r.FormValue("revisions"))
 
     entry := r.URL.Path
 
@@ -145,6 +157,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     if len(path.Dir(entry)) > 1 {
         node.Dirs = strings.Split(path.Dir(entry), "/")
     }
+
 
     // We have content, update
     if content != "" && changelog != "" {
@@ -158,7 +171,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
             node.GitAdd().GitCommit(changelog, author).GitLog()
             node.ToMarkdown()
         }
-    } else if(reset != "") {
+    } else if reset != "" {
         // Reset to revision
         node.Revision = reset
         node.GitRevert().GitCommit("Reverted to: " + node.Revision, author)
@@ -189,7 +202,7 @@ func writeFile(bytes []byte, entry string) error {
 
 func renderTemplate(w http.ResponseWriter, node *Node) {
 
-    t := template.New("test")
+    t := template.New("wiki")
     var err error
 
     // Build template
@@ -202,6 +215,12 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
         }
         // Add content
         tpl += node.Markdown
+
+        // Show revisions
+        if node.Revisions {
+            tpl += "{{ template \"revisions\" . }}"
+        }
+
         // Footer
         tpl += "{{ template \"footer\" . }}"
         t.Parse(tpl)
@@ -214,7 +233,8 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 
     // Include the rest
     t.ParseFiles("templates/header.tpl", "templates/footer.tpl",
-    "templates/actions.tpl", "templates/revision.tpl")
+    "templates/actions.tpl", "templates/revision.tpl",
+    "templates/revisions.tpl")
 	err = t.Execute(w, node)
     if err != nil {
         log.Print("Could not execute template: ", err)

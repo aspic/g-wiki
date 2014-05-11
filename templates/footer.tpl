@@ -1,20 +1,5 @@
 {{define "footer"}}
  </div>
-<div class="col-md-3">
- <p class="text-muted">Revisions:</p>
- <div class="list-group">
-  {{range $log := .Log}}
-   {{if $log.Link}}
-    <a href="?revision={{$log.Hash}}" class="list-group-item">
-   {{else}}
-    <a href="?revision={{$log.Hash}}" class="list-group-item active">
-   {{end}}
-    {{$log.Message}} ({{$log.Time}})
-   </a>
-   </li>
-  {{end}}
- </div>
-</div>
 <!-- end row -->
 </div>
 <div class="row">
