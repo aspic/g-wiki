@@ -5,6 +5,8 @@ is formatted in [markdown
 syntax](http://daringfireball.net/projects/markdown/syntax). The wiki is
 rendered with go templates and [bootstrap](http://getbootstrap.com) css.
 
+Current running example: [mehl.no](http://mehl.no:9000/)
+
 ## Install
 
 Ensure that go is installed. Export the GOPATH environment variable to
