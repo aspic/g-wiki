@@ -3,7 +3,6 @@ package main
 import (
     "html/template"
     "net/http"
-    "net/http/fcgi"
     "log"
     "fmt"
     "flag"
@@ -156,12 +155,6 @@ func ParseBool(value string) bool {
 }
 
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
-
-    if r.URL.Path == "/favicon.ico" {
-        return
-    }
-    log.Printf("ip: %s, route: %s", r.RemoteAddr, r.URL.Path)
-
     // Params
     content := r.FormValue("content")
     edit := r.FormValue("edit")
@@ -271,8 +264,6 @@ func main() {
 
     if *local != "" {
         err = http.ListenAndServe(*local, nil)
-    } else {
-        err = fcgi.Serve(nil, nil)
     }
     if err != nil {
         panic("ListenAndServe: " + err.Error())
