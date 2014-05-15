@@ -3,6 +3,7 @@ package main
 import (
     "html/template"
     "net/http"
+    "net/http/fcgi"
     "log"
     "fmt"
     "flag"
@@ -19,8 +20,6 @@ import (
 )
 
 const (
-    DEFAULT_HOST = "localhost"
-    DEFAULT_PORT = 8080
     DIRECTORY = "files"
     LOG_LIMIT = "5"
 )
@@ -265,11 +264,16 @@ func main() {
     // Static resources
     http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 
-    var host = flag.String("h", DEFAULT_HOST, "Hostname")
-    var port = flag.Int("p", DEFAULT_PORT, "Port")
-    flag.Parse()
+    var local = flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000")
 
-    err := http.ListenAndServe(fmt.Sprintf("%s:%d", *host, *port), nil)
+    flag.Parse()
+    var err error
+
+    if *local != "" {
+        err = http.ListenAndServe(*local, nil)
+    } else {
+        err = fcgi.Serve(nil, nil)
+    }
     if err != nil {
         panic("ListenAndServe: " + err.Error())
     }

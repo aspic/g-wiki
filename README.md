@@ -22,7 +22,7 @@ Download dependencies and compile the binary by:
 You can now run g-wiki with the standard settings by executing the
 binary:
 
-    ./bin/wiki
+    ./bin/wiki -local=":8080"
 
 Point your web browser to `http://localhost:8080/` to see the wiki in
 action. The wiki tries to store files in a `files` folder within the
