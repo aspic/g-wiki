@@ -8,8 +8,7 @@
 </head>
 <body>
 <div class="container">
- <div class="row">
-  <div class="col-md-9">
+ <div class="row col-md-9">
    <ol class="breadcrumb">
     {{range $dir := .Dirs }}
      {{if $dir.Active }}
@@ -20,4 +19,5 @@
     {{ end }}
    </ol>
    {{ if .Revision}}<p class="text-muted">Revision: {{.Revision}}</p>{{end}}
+ </div>
 {{end}}

@@ -30,11 +30,11 @@ type Node struct {
     File string
     Content string
     Template string
-    Markdown string
     Revision string
     Bytes []byte
     Dirs []*Directory
     Log []*Log
+    Markdown template.HTML
 
     Revisions bool // Show revisions
 }
@@ -145,7 +145,7 @@ func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
 }
 // Process node contents
 func (node *Node) ToMarkdown() {
-    node.Markdown = string(blackfriday.MarkdownCommon(node.Bytes))
+    node.Markdown = template.HTML(string(blackfriday.MarkdownCommon(node.Bytes)))
 }
 
 func ParseBool(value string) bool {
@@ -231,9 +231,8 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
         } else if node.Revision != "" {
             tpl += "{{ template \"revision\" . }}"
         }
-        // Add content
-        tpl += node.Markdown
-
+        // Add node
+        tpl += "{{ template \"node\" . }}"
         // Show revisions
         if node.Revisions {
             tpl += "{{ template \"revisions\" . }}"
@@ -252,7 +251,7 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
     // Include the rest
     t.ParseFiles("templates/header.tpl", "templates/footer.tpl",
     "templates/actions.tpl", "templates/revision.tpl",
-    "templates/revisions.tpl")
+    "templates/revisions.tpl", "templates/node.tpl")
 	err = t.Execute(w, node)
     if err != nil {
         log.Print("Could not execute template: ", err)

@@ -1,4 +1,5 @@
 {{ define "actions" }}
+<div class="row col-md-9">
  <form method="POST">
   <div class="form-group">
    <button type="submit" class="btn btn-default btn-xs" name="edit" value="true">
@@ -9,4 +10,5 @@
    </button>
   </div>
  </form>
+</div>
 {{end}}
