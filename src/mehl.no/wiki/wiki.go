@@ -155,11 +155,9 @@ func ParseBool(value string) bool {
 }
 
 func wikiHandler(w http.ResponseWriter, r *http.Request) {
-
     if r.URL.Path == "/favicon.ico" {
         return
     }
-
     // Params
     content := r.FormValue("content")
     edit := r.FormValue("edit")
