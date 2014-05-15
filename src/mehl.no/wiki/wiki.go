@@ -31,13 +31,18 @@ type Node struct {
     Content string
     Template string
     Markdown string
-    Log []*Log
     Revision string
-    Dirs []string
-    Active string
     Bytes []byte
+    Dirs []*Directory
+    Log []*Log
 
     Revisions bool // Show revisions
+}
+
+type Directory struct {
+    Path string
+    Name string
+    Active bool
 }
 
 type Log struct {
@@ -79,7 +84,9 @@ func (node *Node) GitLog() *Node {
     for (err == nil) {
         bytes, err = b.ReadSlice('\n')
         logLine := parseLog(bytes)
-        if logLine.Hash != node.Revision {
+        if logLine == nil {
+            continue
+        } else if logLine.Hash != node.Revision {
             logLine.Link = true
         }
         node.Log = append(node.Log, logLine)
@@ -99,6 +106,23 @@ func parseLog(bytes []byte) *Log {
         return &Log{Hash: matches[1], Time: matches[2], Message: matches[3]}
     }
     return nil
+}
+
+func listDirectories(path string) []*Directory {
+    s := make([]*Directory, 0)
+    dirPath := ""
+    for i,dir := range (strings.Split(path, "/")) {
+        if i == 0 {
+            dirPath += dir
+        } else {
+            dirPath += "/" + dir
+        }
+        s = append(s, &Directory{Path: dirPath, Name: dir})
+    }
+    if len(s) > 0 {
+        s[len(s)-1].Active = true
+    }
+    return s
 }
 
 // Soft reset to specific revision
@@ -151,13 +175,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
     node.Revisions = ParseBool(r.FormValue("revisions"))
 
-    entry := r.URL.Path
-
-    node.Active = path.Base(entry)
-    if len(path.Dir(entry)) > 1 {
-        node.Dirs = strings.Split(path.Dir(entry), "/")
-    }
-
+    node.Dirs = listDirectories(r.URL.Path)
 
     // We have content, update
     if content != "" && changelog != "" {

@@ -12,9 +12,12 @@
   <div class="col-md-9">
    <ol class="breadcrumb">
     {{range $dir := .Dirs }}
-     <li><a href="../{{ $dir }}">{{$dir}}</a></li>
+     {{if $dir.Active }}
+      <li class="active">{{$dir.Name}}</li>
+     {{ else }}
+      <li><a href="{{ $dir.Path }}">{{$dir.Name}}</a></li>
+     {{ end }}
     {{ end }}
-    <li class="active">{{ .Active }}</li>
    </ol>
    {{ if .Revision}}<p class="text-muted">Revision: {{.Revision}}</p>{{end}}
 {{end}}
