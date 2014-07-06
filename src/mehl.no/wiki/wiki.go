@@ -35,6 +35,8 @@ type Node struct {
     Markdown template.HTML
 
     Revisions bool // Show revisions
+    Config bool // Whether this is a config node
+    Password string
 }
 
 type Directory struct {
@@ -146,6 +148,10 @@ func (node *Node) ToMarkdown() {
     node.Markdown = template.HTML(string(blackfriday.MarkdownCommon(node.Bytes)))
 }
 
+func (node *Node) accessible() bool {
+    return (!node.Config || node.Password == "test")
+}
+
 func ParseBool(value string) bool {
     boolValue, err := strconv.ParseBool(value)
     if err != nil {
@@ -165,15 +171,23 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
     author := r.FormValue("author")
     reset := r.FormValue("revert")
     revision := r.FormValue("revision")
+    password := r.FormValue("password")
 
     filePath := fmt.Sprintf("%s%s.md", DIRECTORY, r.URL.Path)
-    node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path}
+    node := &Node{File: r.URL.Path[1:] + ".md", Path: r.URL.Path, Password: password}
     node.Revisions = ParseBool(r.FormValue("revisions"))
 
     node.Dirs = listDirectories(r.URL.Path)
+    if r.URL.Path == "/config" {
+        node.Config = true
+        if node.accessible() {
+            edit = "true"
+        } else {
+            node.Template = "templates/login.tpl"
+        }
+    }
 
-    // We have content, update
-    if content != "" && changelog != "" {
+    if content != "" && changelog != "" && node.accessible() {
         bytes := []byte(content)
         err := writeFile(bytes, filePath)
         if err != nil {
@@ -184,14 +198,13 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
             node.GitAdd().GitCommit(changelog, author).GitLog()
             node.ToMarkdown()
         }
-    } else if reset != "" {
+    } else if reset != "" && node.accessible() {
         // Reset to revision
         node.Revision = reset
         node.GitRevert().GitCommit("Reverted to: " + node.Revision, author)
         node.Revision = ""
-        node.GitShow().GitLog()
-        node.ToMarkdown()
-    } else {
+        node.GitShow().GitLog().ToMarkdown()
+    } else if node.accessible() {
         // Show specific revision
         node.Revision = revision
         node.GitShow().GitLog()
@@ -218,8 +231,12 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
     t := template.New("wiki")
     var err error
 
-    // Build template
-    if node.Markdown != "" {
+    if node.Template != "" {
+        t, err = template.ParseFiles(node.Template)
+        if err != nil {
+            log.Print("Could not parse template", err)
+        }
+    } else if node.Markdown != "" {
         tpl := "{{ template \"header\" . }}"
         if node.isHead() {
             tpl += "{{ template \"actions\" .}}"
@@ -236,11 +253,6 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
         // Footer
         tpl += "{{ template \"footer\" . }}"
         t.Parse(tpl)
-    } else if node.Template != "" {
-        t, err = template.ParseFiles(node.Template)
-        if err != nil {
-            log.Print("Could not parse template", err)
-        }
     }
 
     // Include the rest

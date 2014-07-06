@@ -11,6 +11,11 @@
   <div class="form-group col-md-2">
    <input type="text" class="form-control" name="author" placeholder="Author"/>
   </div>
+  {{if .Config}}
+  <div class="form-group col-md-2">
+   <input type="text" class="form-control" name="password" placeholder="password"/>
+  </div>
+  {{end}}
   <div class="form-group col-md-2">
    <button type="submit" class="btn btn-default">
     <span class="glyphicon glyphicon-floppy-disk"></span> Save
