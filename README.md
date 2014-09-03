@@ -9,22 +9,10 @@ Current running example: [mehl.no](http://mehl.no:8081/)
 
 ## Install
 
-Ensure that go is installed. Export the GOPATH environment variable to
-where you checked out the g-wiki project:
+Simply go get it:
+	
+	go get github.com/tgulacsi/g-wiki
 
-    export GOPATH=$GOPATH:/some/path/g-wiki/
+then run it
 
-Download dependencies and compile the binary by:
-
-    go get all
-    go install mehl.no/wiki
-
-You can now run g-wiki with the standard settings by executing the
-binary:
-
-    ./bin/wiki -local=":8080"
-
-Point your web browser to `http://localhost:8080/` to see the wiki in
-action. The wiki tries to store files in a `files` folder within the
-project directory. This folder has to exist and be writeable by the user
-running the g-wiki instance.
+	./g-wiki -http=:8080 -dir=files 
