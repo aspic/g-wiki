@@ -255,7 +255,9 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 
 		// Footer
 		tpl += "{{ template \"footer\" . }}"
-		t.Parse(tpl)
+		if t, err = t.Parse(tpl); err != nil {
+			log.Printf("Couldn't parse template %q: %v", tpl, err)
+		}
 	} else if node.Template != "" {
 		tpl, err := templateBox.String(node.Template)
 		if err != nil {
