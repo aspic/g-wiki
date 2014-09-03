@@ -4,6 +4,8 @@ pkg
 files/*
 # Build dependencies
 src/github.com
+# vim
+*.sw[po]
 # Binary
 /wiki
 /g-wiki

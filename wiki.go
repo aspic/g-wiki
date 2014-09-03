@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/russross/blackfriday"
 )
 
@@ -23,6 +24,8 @@ var (
 	directory = "files"
 	logLimit  = 5
 	logLimitS = ""
+
+	templateBox *rice.Box
 )
 
 type Node struct {
@@ -208,7 +211,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
 		node.GitShow().GitLog()
 		if edit == "true" || len(node.Bytes) == 0 {
 			node.Content = string(node.Bytes)
-			node.Template = "templates/edit.tpl"
+			node.Template = "edit.tpl"
 		} else {
 			node.ToMarkdown()
 		}
@@ -248,18 +251,26 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 		tpl += "{{ template \"footer\" . }}"
 		t.Parse(tpl)
 	} else if node.Template != "" {
-		t, err = template.ParseFiles(node.Template)
+		tpl, err := templateBox.String(node.Template)
 		if err != nil {
-			log.Print("Could not parse template", err)
+			log.Printf("Couldn't load template %q: %v", node.Template, err)
+		} else if t, err = t.Parse(tpl); err != nil {
+			log.Print("Could not parse template %q: %v", node.Template, err)
 		}
 	}
 
 	// Include the rest
-	t.ParseFiles("templates/header.tpl", "templates/footer.tpl",
-		"templates/actions.tpl", "templates/revision.tpl",
-		"templates/revisions.tpl", "templates/node.tpl")
-	err = t.Execute(w, node)
-	if err != nil {
+	for _, name := range []string{"header.tpl", "footer.tpl",
+		"actions.tpl", "revision.tpl",
+		"revisions.tpl", "node.tpl",
+	} {
+		if tpl, err := templateBox.String(name); err != nil {
+			log.Printf("Couldn't load template %q: %v", name, err)
+		} else if t, err = t.Parse(tpl); err != nil {
+			log.Printf("Couldn't parse template %q: %v", name, err)
+		}
+	}
+	if err = t.Execute(w, node); err != nil {
 		log.Print("Could not execute template: ", err)
 	}
 }
@@ -281,6 +292,13 @@ func main() {
 	logLimit = *flagLogLimit
 	logLimitS = strconv.Itoa(logLimit)
 	directory = *flagDirectory
+
+	// Load templates
+	var err error
+	templateBox, err = rice.FindBox("templates")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Handlers
 	http.HandleFunc("/", wikiHandler)
