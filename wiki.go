@@ -28,6 +28,7 @@ var (
 	templateBox *rice.Box
 )
 
+// Node holds a Wiki node.
 type Node struct {
 	Path     string
 	File     string
@@ -42,12 +43,14 @@ type Node struct {
 	Revisions bool // Show revisions
 }
 
+// Directory lists nodes.
 type Directory struct {
 	Path   string
 	Name   string
 	Active bool
 }
 
+// Log is an event in the past.
 type Log struct {
 	Hash    string
 	Message string
@@ -59,30 +62,31 @@ func (node *Node) isHead() bool {
 	return len(node.Log) > 0 && node.Revision == node.Log[0].Hash
 }
 
-// Add node
+// GitAdd node
 func (node *Node) GitAdd() *Node {
 	gitCmd(exec.Command("git", "add", node.File))
 	return node
 }
 
-// Commit node message
+// GitCommit node message.
 func (node *Node) GitCommit(msg string, author string) *Node {
 	if author != "" {
-		gitCmd(exec.Command("git", "commit", "-m", msg, fmt.Sprintf("--author='%s <system@g-wiki>'", author)))
+		gitCmd(exec.Command("git", "commit", "-m", msg,
+			fmt.Sprintf("--author='%s <system@g-wiki>'", author)))
 	} else {
 		gitCmd(exec.Command("git", "commit", "-m", msg))
 	}
 	return node
 }
 
-// Fetch node revision
+// GitShow fetches the node revision.
 func (node *Node) GitShow() *Node {
 	buf := gitCmd(exec.Command("git", "show", node.Revision+":"+node.File))
 	node.Bytes = buf.Bytes()
 	return node
 }
 
-// Fetch node log
+// GitLog fetches the node log.
 func (node *Node) GitLog() *Node {
 	buf := gitCmd(exec.Command(
 		"git", "log", "--pretty=format:%h %ad %s", "--date=relative",
@@ -135,9 +139,9 @@ func listDirectories(path string) []*Directory {
 	return s
 }
 
-// Soft reset to specific revision
+// GitRevert soft resets to the node's specific revision.
 func (node *Node) GitRevert() *Node {
-	log.Printf("Reverts %s to revision %s", node, node.Revision)
+	log.Printf("Reverts %v to revision %s", node, node.Revision)
 	gitCmd(exec.Command("git", "checkout", node.Revision, "--", node.File))
 	return node
 }
@@ -145,21 +149,23 @@ func (node *Node) GitRevert() *Node {
 // Run git command, will currently die on all errors
 func gitCmd(cmd *exec.Cmd) *bytes.Buffer {
 	cmd.Dir = fmt.Sprintf("%s/", directory)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	runError := cmd.Run()
-	if runError != nil {
-		log.Print(fmt.Sprintf("Error: command failed with:\n\"%s\n\"", out.String()))
-		return bytes.NewBuffer([]byte{})
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		log.Printf("Error: command %q failed (%v) with: %s",
+			strings.Join(cmd.Args, " "), err, errBuf.String())
+		return &bytes.Buffer{}
 	}
-	return &out
+	return &outBuf
 }
 
-// Process node contents
+// ToMarkdown processes the node contents.
 func (node *Node) ToMarkdown() {
 	node.Markdown = template.HTML(string(blackfriday.MarkdownCommon(node.Bytes)))
 }
 
+// ParseBool parses a string to a bool.
 func ParseBool(value string) bool {
 	boolValue, err := strconv.ParseBool(value)
 	if err != nil {
@@ -191,7 +197,7 @@ func wikiHandler(w http.ResponseWriter, r *http.Request) {
 		bytes := []byte(content)
 		err := writeFile(bytes, filePath)
 		if err != nil {
-			log.Printf("Cant write to file %s, error: ", filePath, err)
+			log.Printf("Cant write to file %q, error: %v", filePath, err)
 		} else {
 			// Wrote file, commit
 			node.Bytes = bytes
@@ -255,7 +261,7 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 		if err != nil {
 			log.Printf("Couldn't load template %q: %v", node.Template, err)
 		} else if t, err = t.Parse(tpl); err != nil {
-			log.Print("Could not parse template %q: %v", node.Template, err)
+			log.Printf("Could not parse template %q: %v", node.Template, err)
 		}
 	}
 
@@ -271,7 +277,7 @@ func renderTemplate(w http.ResponseWriter, node *Node) {
 		}
 	}
 	if err = t.Execute(w, node); err != nil {
-		log.Print("Could not execute template: ", err)
+		log.Printf("Could not execute template: %v", err)
 	}
 }
 
@@ -279,12 +285,12 @@ func main() {
 	flagDirectory := flag.String("dir", directory, "directory where the markdown files are stored")
 	flagLogLimit := flag.Int("log-limit", logLimit, "log depth limit")
 	flagLocal := flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000")
-	flagHttp := flag.String("http", ":8000", "server as webserver, example: 0.0.0.0:8000")
+	flagHTTP := flag.String("http", ":8000", "server as webserver, example: 0.0.0.0:8000")
 	flag.Parse()
 
 	addr := *flagLocal
 	if addr == "" {
-		addr = *flagHttp
+		addr = *flagHTTP
 	}
 	if addr == "" {
 		return
@@ -292,6 +298,10 @@ func main() {
 	logLimit = *flagLogLimit
 	logLimitS = strconv.Itoa(logLimit)
 	directory = *flagDirectory
+
+	if _, err := os.Stat(directory); err != nil {
+		log.Printf("WARNING: the specified directory (%q) does not exist!", directory)
+	}
 
 	// Load templates
 	var err error
@@ -304,7 +314,10 @@ func main() {
 	http.HandleFunc("/", wikiHandler)
 
 	// Static resources
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+	http.Handle("/static/",
+		http.StripPrefix("/static/",
+			http.FileServer(http.Dir("./static/"))))
 
+	log.Printf("Start listening on %s.", addr)
 	log.Fatalln(http.ListenAndServe(addr, nil))
 }
