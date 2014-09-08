@@ -90,7 +90,7 @@ func (node *Node) GitShow() *Node {
 func (node *Node) GitLog() *Node {
 	buf := gitCmd(exec.Command(
 		"git", "log", "--pretty=format:%h %ad %s", "--date=relative",
-		"-n", logLimitS, node.File))
+		"-n", logLimitS, "--", node.File))
 	var err error
 	b := bufio.NewReader(buf)
 	var bytes []byte
