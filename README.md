@@ -9,22 +9,25 @@ Current running example: [mehl.no](http://mehl.no:8081/)
 
 ## Install
 
-Ensure that go is installed. Export the GOPATH environment variable to
-where you checked out the g-wiki project:
+Simply go get it:
+	
+	go get github.com/tgulacsi/g-wiki
 
-    export GOPATH=$GOPATH:/some/path/g-wiki/
+then run it
 
-Download dependencies and compile the binary by:
+	g-wiki -http=:8080 -dir=files 
 
-    go get all
-    go install mehl.no/wiki
+## Develop
 
-You can now run g-wiki with the standard settings by executing the
-binary:
+Templates are embedded with [go.rice](https://github.com/GeertJohan/go.rice).
+If you change a file under templates, either 
 
-    ./bin/wiki -local=":8080"
+	rm templates.rice-box.go
 
-Point your web browser to `http://localhost:8080/` to see the wiki in
-action. The wiki tries to store files in a `files` folder within the
-project directory. This folder has to exist and be writeable by the user
-running the g-wiki instance.
+to force g-wiki to load templates from under `templates` directory; or
+
+	go get github.com/GeertJohan/go.rice/rice
+	rice embed-go
+
+to regenerate templates.rice-box.go, and be able to just `go build`,
+to have a portable binary.
