@@ -5,7 +5,7 @@ RUN mkdir /app
 ADD . /app/ 
 WORKDIR /app 
 
-RUN mkdir files
+RUN mkdir -p files
 RUN git init files
 
 RUN git config --global user.email "system@dockercontainer"
