@@ -1,7 +1,5 @@
 bin
 pkg
-# Wiki files
-files/*
 # Build dependencies
 src/github.com
 # Binary
