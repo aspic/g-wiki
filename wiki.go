@@ -138,7 +138,7 @@ func gitCmd(cmd *exec.Cmd) (*bytes.Buffer) {
     cmd.Stdout = &out
     runError := cmd.Run()
     if runError != nil {
-        log.Print(fmt.Sprintf("Error: command failed with:\n\"%s\n\"", out.String()))
+        fmt.Printf("Error: (%s) command failed with:\n\"%s\n\"", runError, out.String())
         return bytes.NewBuffer([]byte{})
     }
     return &out
