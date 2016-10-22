@@ -5,7 +5,7 @@ is formatted in [markdown
 syntax](http://daringfireball.net/projects/markdown/syntax). The wiki is
 rendered with go templates and [bootstrap](http://getbootstrap.com) css.
 
-Current running example: [mehl.no](http://mehl.no:8081/)
+Current running example: [wiki.mehl.no](https://wiki.mehl.no/)
 
 ## Build and run locally
 
